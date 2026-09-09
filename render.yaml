@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: opencode-free-proxy
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.mjs
+    envVars:
+      - key: PROXY_PORT
+        value: 6446
+      - key: TOR_PROXY
+        sync: false

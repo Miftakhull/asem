@@ -19,11 +19,13 @@ Done. Server is at `http://localhost:6446`. API keys are in `api-keys.json` (aut
 
 | Model | What it is | Reliability |
 |-------|-----------|-------------|
-| `deepseek-v4-flash-free` | DeepSeek V4 Flash | Solid |
-| `big-pickle` | DeepSeek V4 Flash (alias) | Solid |
-| `minimax-m2.5-free` | MiniMax M2.5 | Solid |
-| `nemotron-3-super-free` | NVIDIA Nemotron 3 Super | Hit or miss |
-| `qwen3.6-plus-free` | Qwen 3.6 Plus | Intermittent |
+| `big-pickle` | Stealth model (DeepSeek V4 Flash) | Solid |
+| `mimo-v2.5-free` | MiMo V2.5 | Solid |
+| `ling-3.0-flash-fin-free` | Ling 3.0 Flash Fin | Solid |
+| `nemotron-3-ultra-free` | NVIDIA Nemotron 3 Ultra | Good |
+| `nemotron-3.5-lightning-free` | NVIDIA Nemotron 3.5 Lightning | Good |
+| `hy3-free` | Hy3 | Good |
+| `muse-spark-1.2-contributor-free` | Meta Muse Spark 1.2 | Experimental |
 
 All models support streaming, tool calls, and system messages.
 
@@ -36,7 +38,7 @@ curl http://localhost:6446/v1/chat/completions \
   -H "Authorization: Bearer YOUR_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "deepseek-v4-flash-free",
+    "model": "mimo-v2.5-free",
     "messages": [{"role": "user", "content": "Hello"}],
     "stream": true
   }'
@@ -49,7 +51,7 @@ curl http://localhost:6446/v1/messages \
   -H "x-api-key: YOUR_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "deepseek-v4-flash-free",
+    "model": "mimo-v2.5-free",
     "system": "You are helpful.",
     "messages": [{"role": "user", "content": "Hello"}],
     "max_tokens": 1024,
@@ -83,9 +85,9 @@ Add to `~/.config/opencode/opencode.json`:
       "apiKey": "YOUR_KEY",
       "baseURL": "http://localhost:6446/v1",
       "models": {
-        "free/deepseek-v4-flash-free": {
-          "id": "deepseek-v4-flash-free",
-          "name": "free/deepseek-v4-flash-free",
+        "free/mimo-v2.5-free": {
+          "id": "mimo-v2.5-free",
+          "name": "free/mimo-v2.5-free",
           "attachment": true,
           "reasoning": true
         }
@@ -99,13 +101,32 @@ Add to `~/.config/opencode/opencode.json`:
 
 - Base URL: `http://YOUR_HOST:6446/v1`
 - API Key: your key from `api-keys.json`
-- Model: `deepseek-v4-flash-free`
+- Model: `mimo-v2.5-free`
 
 ### Claude Code (Anthropic format)
 
 - Base URL: `http://YOUR_HOST:6446`
 - API Key: your key from `api-keys.json`
 - Works with `/v1/messages` endpoint
+
+## Tor proxy (optional)
+
+Route only this proxy's traffic through Tor without touching system-wide settings.
+
+```bash
+# 1. Install & run Tor (default SOCKS5 on port 9050)
+# Windows: download Tor Expert Bundle, run tor.exe
+# Linux: sudo apt install tor && sudo systemctl start tor
+
+# 2. Start proxy with Tor
+TOR_PROXY=socks5://127.0.0.1:9050 node server.mjs
+```
+
+Each request will use a different Tor circuit (different exit IP). Session ID rotates every 30 min.
+
+**Pros:** Different IP per request → better rate limit distribution.
+
+**Cons:** Higher latency, streaming may lag, some exit nodes blocked by OpenCode.
 
 ## Deploy on a VPS
 
@@ -156,6 +177,7 @@ sudo systemctl enable --now opencode-proxy
 |----------|---------|------|
 | `PROXY_PORT` | `6446` | Server port |
 | `KEYS_FILE` | `./api-keys.json` | API keys file path |
+| `TOR_PROXY` | *(disabled)* | SOCKS5 proxy URL, e.g. `socks5://127.0.0.1:9050` for Tor |
 
 ## How it works
 

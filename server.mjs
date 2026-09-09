@@ -2,13 +2,35 @@ import express from "express";
 import crypto from "crypto";
 import https from "https";
 import fs from "fs";
+import { SocksProxyAgent } from "socks-proxy-agent";
 
 const app = express();
 app.use(express.json({ limit: "10mb" }));
 
 const PORT = process.env.PROXY_PORT || 6446;
 const OC_VERSION = "1.15.0";
-const PROXY_VERSION = "9";
+const PROXY_VERSION = "11";
+
+// ── Tor proxy (optional) ────────────────────────────────────────────
+const TOR_PROXY = process.env.TOR_PROXY || "";
+let torAgent = TOR_PROXY ? new SocksProxyAgent(TOR_PROXY) : null;
+let torAgentTs = Date.now();
+const TOR_ROTATE_MS = 10 * 60 * 1000; // rotate Tor circuit every 10 min
+
+function getTorAgent() {
+  if (!TOR_PROXY) return null;
+  const now = Date.now();
+  if (now - torAgentTs > TOR_ROTATE_MS) {
+    torAgent = new SocksProxyAgent(TOR_PROXY);
+    torAgentTs = now;
+    console.log("[TOR] Rotated circuit");
+  }
+  return torAgent;
+}
+
+if (torAgent) {
+  console.log("[TOR] Routing through", TOR_PROXY, "| rotating every 10 min");
+}
 
 // ── API Keys ───────────────────────────────────────────────────────
 const keysFile = process.env.KEYS_FILE || "./api-keys.json";
@@ -43,11 +65,13 @@ function ocId(prefix) {
 }
 
 const MODELS = [
-  "deepseek-v4-flash-free",
   "big-pickle",
-  "minimax-m2.5-free",
-  "nemotron-3-super-free",
-  "qwen3.6-plus-free",
+  "mimo-v2.5-free",
+  "ling-3.0-flash-fin-free",
+  "nemotron-3-ultra-free",
+  "nemotron-3.5-lightning-free",
+  "hy3-free",
+  "muse-spark-1.2-contributor-free",
 ];
 
 // Track sessions per user (rotate every 30 min)
@@ -86,6 +110,7 @@ function zenRequest(model, messages, stream, tools, tool_choice, sessionId) {
         "x-opencode-session": sessionId,
       },
       timeout: 120000,
+      ...(TOR_PROXY ? { agent: getTorAgent() } : {}),
     },
   };
 }
@@ -545,6 +570,9 @@ app.post("/v1/messages", async (req, res) => {
     }
   }
 });
+
+// ── Root redirect ───────────────────────────────────────────────────
+app.get("/", (_req, res) => res.redirect("/health"));
 
 // ── Health ──────────────────────────────────────────────────────────
 app.get("/health", (_req, res) => res.json({
