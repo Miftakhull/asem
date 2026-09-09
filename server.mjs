@@ -36,6 +36,25 @@ if (torAgent) {
 const keysFile = process.env.KEYS_FILE || "./api-keys.json";
 let apiKeys = {};
 function loadKeys() {
+  // Priority: API_KEYS env var > api-keys.json file
+  if (process.env.API_KEYS) {
+    try {
+      apiKeys = JSON.parse(process.env.API_KEYS);
+      console.log("[INIT] Loaded API keys from env var");
+      return;
+    } catch {
+      // Try comma-separated format: admin:oc-xxx,user-default:oc-yyy
+      try {
+        const pairs = process.env.API_KEYS.split(",");
+        for (const pair of pairs) {
+          const [name, key] = pair.trim().split(":");
+          if (name && key) apiKeys[name.trim()] = key.trim();
+        }
+        console.log("[INIT] Loaded API keys from env var (comma format)");
+        return;
+      } catch {}
+    }
+  }
   try { apiKeys = JSON.parse(fs.readFileSync(keysFile, "utf8")); } catch {}
   if (Object.keys(apiKeys).length === 0) {
     apiKeys = {
